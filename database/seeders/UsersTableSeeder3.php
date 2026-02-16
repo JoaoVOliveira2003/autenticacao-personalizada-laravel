@@ -14,13 +14,14 @@ class UsersTableSeeder3 extends Seeder
     public function run(): void
     {
 
-        // User3::create([
-        //     'username' => 'nome',
-        //     'email' => 'email@gmail.com',
-        //     'password' => 'senha',
-        //     'email_verified_at' => Carbon::now(),
-        //     'active' => true
-        // ]);
+        User3::create([
+            'username' => 'Usuario',
+            'email' => 'email@gmail.com',
+            'password' => 'senha',
+            'email_verified_at' => Carbon::now(),
+            'active' => true
+        ]);
+
         for ($i = 2; $i <= 4; $i++) {
 
             User3::create([
