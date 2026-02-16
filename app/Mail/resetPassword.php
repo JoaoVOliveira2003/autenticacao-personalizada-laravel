@@ -2,22 +2,22 @@
 
 namespace App\Mail;
 
+use Illuminate\Mail\Mailables\Address;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class NewUserConfirmation extends Mailable
+class resetPassword extends Mailable
 {
     use Queueable, SerializesModels;
 
     /**
      * Create a new message instance.
      */
-    public function __construct(public $username,public $link)
+    public function __construct(public $token_link, public $username)
     {
         //
     }
@@ -36,13 +36,12 @@ class NewUserConfirmation extends Mailable
     /**
      * Get the message content definition.
      */
-public function content(): Content
-{
-    return new Content(
-        view: 'auth.email_sent',
-        with: ['link' => $this->link,],
-    );
-}
+    public function content(): Content
+    {
+        return new Content(
+            view: 'auth.forget_password',
+        );
+    }
 
     /**
      * Get the attachments for the message.

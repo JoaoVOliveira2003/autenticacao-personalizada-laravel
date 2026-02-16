@@ -39,7 +39,7 @@
                                     <a href="{{route('register')}}">Não tenho conta de usuário</a>
                                 </div>
                                 <div>
-                                    {{-- <a href="{{route('')}}">Esqueci a minha senha</a> --}}
+                                    <a href="{{route('forgot_password')}}">Esqueci a minha senha</a>
                                 </div>
                             </div>
                             <div class="col text-end align-self-center">

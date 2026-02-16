@@ -4,16 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Mail\NewUserConfirmation;
 use Illuminate\Support\Facades\Auth;
-
 use App\Models\User3;
 use Carbon\Carbon;
 use Illuminate\Auth\Events\Login;
-// use Illuminate\Container\Attributes\Auth;
 use Illuminate\Foundation\Auth\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
-
 use Illuminate\Support\Str;
+use App\Mail\resetPassword;
+
 
 class authController extends Controller
 {
@@ -25,6 +24,10 @@ class authController extends Controller
 
     public function authenticate(Request $dados)
     {
+
+
+        Auth::logout();
+
         //verifica dados
         $credenciais = $dados->validate(
             [
@@ -52,6 +55,7 @@ class authController extends Controller
         // }
 
         // verificar usuario
+
         $user = User3::where('username', $credenciais['username'])
             ->where('active', true)
             ->where(function ($query) {
@@ -83,7 +87,6 @@ class authController extends Controller
         // testa senha
         // if (!password_verify(password: $credenciais['password'], $user->password)) {
         if ($credenciais['password'] !== $user->password) {
-
             return back()->withInput()->with(['invalid_login' => 'login invalido2']);
         }
 
@@ -157,7 +160,7 @@ class authController extends Controller
 
 
         // enviar email
-        $resultado = Mail::to($user->email)->send(new NewUserConfirmation( $dados->username, $link));
+        $resultado = Mail::to($user->email)->send(new NewUserConfirmation($dados->username, $link));
 
 
         // gaurdar
@@ -170,22 +173,163 @@ class authController extends Controller
         $user->save();
 
         //    view de sucesso
-        return view('auth.email_sent', ['email' => $user->email,'link'=>$user->token]);
+        return view('auth.email_sent', ['email' => $user->email, 'link' => $user->token]);
     }
 
     public function new_user_confirmation($token)
     {
         $user = User3::where('token', $token)->first();
-        if(!$user){
+        if (!$user) {
             return redirect()->route('login');
         }
 
-        $user -> email_verified_at = Carbon::now();
-        $user -> token  = null ;
-        $user -> active = true ;
-        $user -> save();
+        $user->email_verified_at = Carbon::now();
+        $user->token  = null;
+        $user->active = true;
+        $user->save();
 
         Auth::login($user);
         return view('auth.new_user_confirmation');
+    }
+
+    public function profile()
+    {
+        return view('auth.profile');
+    }
+
+    public function charge_password(Request $dados)
+    {
+
+        $dados->validate(
+            [
+                'current_password' => 'required|string|min:3|max:32',
+                'new_password' => 'required|string|min:3|max:32',
+                'new_password_confirmation' => 'required|same:new_password',
+
+            ],
+            [
+                'password.required' => 'A senha atual é obrigatória.',
+                'password.string'   => 'A senha atual deve ser um texto válido.',
+                'password.min'      => 'A senha atual deve ter no mínimo :min caracteres.',
+                'password.max'      => 'A senha atual deve ter no máximo :max caracteres.',
+
+                'new_password.required' => 'A nova senha é obrigatória.',
+                'new_password.string'   => 'A nova senha deve ser um texto válido.',
+                'new_password.min'      => 'A nova senha deve ter no mínimo :min caracteres.',
+                'new_password.max'      => 'A nova senha deve ter no máximo :max caracteres.',
+
+                'new_password_confirmation.required' => 'A confirmação da nova senha é obrigatória.',
+                'new_password_confirmation.same'     => 'A confirmação da nova senha deve ser igual à nova senha.',
+            ]
+        );
+
+
+        if ($dados->current_password != Auth::user()->password) {
+            return back()->with(['server_error' => 'a senha n esta correta']);
         }
+
+        // atualizar na base de dados
+
+        $user = Auth::user();
+        $user->password = $dados->new_password;
+        $user->save();
+
+
+        return redirect()->route('profile')->with([
+            'success' => 'a senha foi atualizada.'
+        ]);
+    }
+
+    public function forgot_password()
+    {
+        return view('auth.forget_password');
+    }
+
+    public function reset_password_update(Request $dados)
+    {
+
+        $dados->validate(
+            [
+                'email' => 'required|email'
+            ],
+            [
+                'email.required' => 'O e-mail é obrigatório.',
+                'email.email'    => 'Informe um e-mail válido.',
+            ]
+        );
+
+        $mensagem = 'Verifique a sua caixa de correio caso tenha um email cadastrado';
+
+        $user = User3::where('email', $dados->email)->first();
+
+        if (!$user) {
+            return back()->with(['server_message' => $mensagem . '1']);
+        }
+
+        $user->token = Str::random(65);
+
+        $token_link = route('reset_password', ['token' => $user->token]);
+        $result = Mail::to($user->email)->send(new ResetPassword($user->username, $token_link));
+
+
+        if (!$result) {
+            return back()->with(['server_message' => $mensagem . '2']);
+        }
+
+        $user->save();
+
+        return back()->with(['server_message' => $mensagem . '3']);
+    }
+
+    public function reset_password($token)
+    {
+        $user = User3::where('token', $token)->first();
+
+
+        if (!$user) {
+            return redirect()->route('login');
+        }
+
+        return view('auth.reset_password', ['token' => $token]);
+    }
+
+    public function atualizacao_password(Request $dados)
+    {
+        $user = User3::where('token', operator: $dados->token)->first();
+
+        // if(!$user){
+        //     return redirect()->route('login');
+        // }
+
+        dd($dados->token);
+        return;
+
+        $user->password = $dados->new_password;
+        $user->token = null;
+        $user->save();
+
+        return redirect()->route('login')->with(['sucess' => true]);
+    }
+
+    public function apagarConta(Request $dados)
+    {
+
+        $dados->validate(
+            [
+                'texto' => 'required|string|in:apagar',
+            ],
+            [
+                'texto.required' => 'Texto obrigatório.',
+                'texto.in'       => 'O texto deve ser exatamente "apagar".',
+            ]
+        );
+
+        $id = Auth::id();
+
+        if (User3::where('id', $id)->delete()) {
+            return redirect()->route('login')->with(['sucess' => true]);
+        } else {
+            return back()->with(key: ['server_message' => 'erro ao pagar conta']);
+        }
+    }
 }
